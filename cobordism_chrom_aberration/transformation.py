@@ -1,7 +1,7 @@
 from collections import namedtuple
 from segment import ChromSegment
 
-ChromTransformation = namedtuple('ChromTransformation', ['transform', 'symbol'])
+ChromTransformation = namedtuple('ChromTransformation', ['forward', 'symbol', 'backward'])
 
 # class ChromTransformation:
 #     def __init__(self, transform, symbol):
