@@ -5,7 +5,9 @@ class TestElementaryCobordism(unittest.TestCase):
     def test_interval(self):
         i = Interval(['a','b'])
         self.assertEqual(i.next_interval, None)
+        self.assertEqual(i.next_op, None)
         self.assertEqual(i.prev_interval, None)
+        self.assertEqual(i.prev_op, None)
         self.assertEqual(i.labels, ('a','b'))
 
     def test_identity(self):
@@ -13,14 +15,18 @@ class TestElementaryCobordism(unittest.TestCase):
         new_i, = elementary_forward_cobordisms['I'](i)
         self.assertEqual(new_i.labels, i.labels)
         self.assertEqual(new_i.prev_interval, i)
+        self.assertEqual(new_i.prev_op, 'I')
         self.assertEqual(i.next_interval, new_i)
+        self.assertEqual(i.next_op, 'I')
 
     def test_twist(self):
         i = Interval(['a','b'])
         new_i, = elementary_forward_cobordisms['T'](i)
         self.assertEqual(new_i.labels, ('b','a'))
         self.assertEqual(new_i.prev_interval, i)
+        self.assertEqual(new_i.prev_op, 'T')
         self.assertEqual(i.next_interval, new_i)
+        self.assertEqual(i.next_op, 'T')
 
     def test_braid(self):
         i_1 = Interval(['a','b'])
@@ -32,16 +38,23 @@ class TestElementaryCobordism(unittest.TestCase):
         self.assertEqual(new_i_2.labels, ('a','b'))
         self.assertEqual(new_i_2.prev_interval, i_1)
         self.assertEqual(i_1.next_interval, new_i_2)
+        self.assertEqual(new_i_1.prev_op, 'W')
+        self.assertEqual(new_i_2.prev_op, 'W')
+        self.assertEqual(i_1.next_op, 'W')
+        self.assertEqual(i_2.next_op, 'W')
     
     def test_copants(self):
         i = Interval(['a','b'])
         new_left, new_right = elementary_forward_cobordisms['C'](i, 'c', 'd')
         self.assertEqual(new_left.labels, ('a','c'))
         self.assertEqual(new_left.prev_interval, i)
+        self.assertEqual(new_left.prev_op, 'C')
         self.assertEqual(i.next_interval['left'], new_left)
         self.assertEqual(new_right.labels, ('d','b'))
         self.assertEqual(new_right.prev_interval, i)
+        self.assertEqual(new_right.prev_op, 'C')
         self.assertEqual(i.next_interval['right'], new_right)
+        self.assertEqual(i.next_op, 'C')
     
     def test_pants(self):
         i_1 = Interval(['a','b'])
@@ -49,8 +62,11 @@ class TestElementaryCobordism(unittest.TestCase):
         new_i, = elementary_forward_cobordisms['P'](i_1, i_2)
         self.assertEqual(new_i.labels, ('a','b','c','d'))
         self.assertEqual(i_1.next_interval, new_i)
+        self.assertEqual(i_1.next_op, 'P')
         self.assertEqual(i_2.next_interval, new_i)
+        self.assertEqual(i_2.next_op, 'P')
         self.assertEqual(new_i.prev_interval, {'left':i_1, 'right':i_2})
+        self.assertEqual(new_i.prev_op, 'P')
 
     def test_identity_reverse(self):
         i = Interval(['a','b'])
