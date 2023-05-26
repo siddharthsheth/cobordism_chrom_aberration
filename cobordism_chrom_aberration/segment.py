@@ -48,21 +48,10 @@ class Chromatin:
             return Chromatin(start, end, color)
 
 # Chromatin = namedtuple('Chromatin', ['start', 'end', 'color', 'centromere'], defaults=[False])
-class Interval:
-    def __init__(self, start, end, next_segment=None, prev_segment=None):
-        self.labels = [start, end]
-        self.next_segment = next_segment
-        self.prev_segment = prev_segment
-        pass
-
 
 class ChromSegment:
     def __init__(self, chromatins, next_segment=None, prev_segment=None):
-        if isinstance(chromatins, Chromatin):
-            self.labeled = False
-            self.chromatins = chromatins
-        elif hasattr(chromatins, '__iter__'):
-            self.labeled = True
+        if hasattr(chromatins, '__iter__'):
             self.chromatins = [c for c in chromatins]
         self.next_segment = next_segment
         self.prev_segment = prev_segment
