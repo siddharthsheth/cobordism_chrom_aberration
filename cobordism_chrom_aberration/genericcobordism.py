@@ -7,6 +7,12 @@ class Interval:
         self.prev_interval = prev_interval
         self.next_op = next_op
         self.prev_op = prev_op
+    
+    def __str__(self):
+        return str(self.labels)
+    
+    def __eq__(self, other):
+        return True if all(l_s == l_o for l_s, l_o in zip(self.labels, other.labels)) else False
 
 def identity(interval):
     new_interval = Interval(interval.labels, 
@@ -16,7 +22,6 @@ def identity(interval):
     interval.next_interval = new_interval
     interval.next_op = 'I'
     return (new_interval,)
-    # return Interval([c for c in s.chromatins])
 
 def twist(interval):
     new_interval = Interval([c for c in reversed(interval.labels)], 
@@ -45,7 +50,7 @@ def copants(interval,  new_right_label=None, new_left_label=None):
     
     if interval.next_interval is not None:
         left_labels, right_labels = interval.next_interval['left'].labels, interval.next_interval['right'].labels
-    else:
+    else:                                                           # buggy. should do same as generate_final_config case 'P'
         left_labels = [interval.labels[0], new_right_label]
         right_labels = [new_left_label, interval.labels[-1]]
 
@@ -76,35 +81,38 @@ def pants(left_interval, right_interval):
     # return ChromSegment([c for c in s.chromatins].extend([c for c in other.chromatins]))
 
 def death(s):
+    #TODO
     pass
 
 def birth():
+    #TODO
     pass
 
 elementary_forward_cobordisms = {'I': identity, 'T': twist, 'W': braid, 'P': pants, 'C': copants, 'D': death, 'B': birth}
 elementary_reverse_cobordisms = {'I': identity, 'T': twist, 'W': braid, 'P': copants, 'C': pants, 'D': birth, 'B': death}
 
 class Cobordism:
-    def __init__(self, steps):
-        if isinstance(steps[0], str) is True:
-            self.steps = [steps]
-            self.in_len, self.out_len = Cobordism.compute_in_out_len(steps)              # set in-boundary
-        else:
-            self.steps = [steps[0]]
-            self.in_len, self.out_len = Cobordism.compute_in_out_len(steps[0])              # set in-boundary
-            for step in steps[1:]:
-                step_cobord = Cobordism(step)
-                self.composition(step_cobord)
+    def __init__(self, steps):                              # ALLOW EMPTY COBORDISM?
+        if steps is not None:
+            if isinstance(steps, str) is True or isinstance(steps[0], str) is True:               # BUGGY STEP
+                self.steps = [tuple(steps)]
+                self.in_len, self.out_len = Cobordism.compute_in_out_len(steps)              # set in-boundary
+            else:
+                self.steps = [steps[0]]
+                self.in_len, self.out_len = Cobordism.compute_in_out_len(steps[0])              # set in-boundary
+                for step in steps[1:]:
+                    step_cobord = Cobordism(step)
+                    self.composition(step_cobord)
             # self.in_out_map = self.generate_terminal_config_map()
 
     def composition(self, step_cobord):
         # check if step_cobord composes with the next
-        if self.out_len == step_cobord.in_len:
+        if len(self.steps) == 0 or self.out_len == step_cobord.in_len:
             self.steps.extend(step_cobord.steps)
             #update out-boundary
             self.out_len = step_cobord.out_len
         else:
-            raise ValueError()
+            raise ValueError('Cobordisms cannot be composed.')
 
     def _generate_configs(self):
         label_count = 0
@@ -133,7 +141,7 @@ class Cobordism:
             configs.append(tuple(out_config))
         return configs
         
-    def generate_terminal_config_map(self):
+    def generate_terminal_configs(self):
         configs = self._generate_configs()
         # backward pass
         for config in reversed(configs):
@@ -160,8 +168,32 @@ class Cobordism:
                         i.prev_interval.labels = i.labels + i.prev_interval.next_interval['right'].labels
         self.in_config = configs[0]
         self.out_config = configs[-1]
-        
 
+    def generate_final_configuration(self, init):
+        if hasattr(self, 'in_config') is False:
+            self.generate_terminal_configs()
+        # print([str(i) for i in init])
+        # print([str(i) for i in self.in_config])
+        if len(init) != len(self.in_config):
+            raise ValueError('Input configuration does not match initial configuration.')
+        init_map = dict()
+        for init_i, self_i in zip(init, self.in_config):
+            if len(init_i.labels) != len(self_i.labels):
+                raise ValueError('Initial configuration inconsistent.')
+            else:
+                for init_label, self_label in zip(init_i.labels, self_i.labels):
+                    if self_label in init_map:
+                        if init_map[self_label] != init_label:
+                            raise ValueError('Initial configuration inconsistent.')
+                    else:
+                        init_map[self_label] = init_label
+        
+        return [Interval([init_map[l] for l in final_i.labels]) for final_i in self.out_config]
+
+
+    def is_cobordism(self, init, final):
+        return True if self.generate_final_configuration(init) == final else False
+    
     @staticmethod
     def check_configuration_compatibility(step, configuration):
         j = 0
@@ -178,7 +210,7 @@ class Cobordism:
                 # do not know what to do
                 pass
             else:
-                raise ValueError()
+                raise ValueError(f'Unknown cobordism: {step[i]}.')
     
     @staticmethod
     def compute_in_out_len(step):
@@ -189,11 +221,42 @@ class Cobordism:
             elif element in {'P', 'W'}:
                 in_len += 2
             elif element != 'B':
-                raise ValueError()
+                raise ValueError(f'Unknown cobordism: {element}.')
             if element in {'I', 'T', 'P', 'B'}:
                 out_len += 1
             elif element in {'C', 'W'}:
                 out_len += 2
             elif element != 'D':
-                raise ValueError()
+                raise ValueError(f'Unknown cobordism: {element}.')
         return in_len, out_len
+    
+    @staticmethod
+    def load_from_file(file):
+        c = None
+        with open(file, 'r') as input:
+            for line in input:
+                elements = line.split()
+                if c is None:
+                    c = Cobordism([e for e in elements if e in elementary_forward_cobordisms])
+                else:
+                    c.composition(Cobordism([e for e in elements if e in elementary_forward_cobordisms]))
+
+        return c
+
+    def save_to_file(self, file):
+        with open(file, 'w') as output:
+            for step in self.steps:
+                output.write(' '.join(step)+'\n')
+
+    @staticmethod
+    def from_string(s:str):
+        steps = s.split('\n')
+        c = None
+        for step in steps:
+            elements = step.split()
+            if c is None:
+                c = Cobordism([e for e in elements if e in elementary_forward_cobordisms])
+            else:
+                c.composition(Cobordism([e for e in elements if e in elementary_forward_cobordisms]))
+        
+        return c
